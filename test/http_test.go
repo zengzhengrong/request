@@ -386,6 +386,4 @@ func TestNewPipLine(t *testing.T) {
 	)
 	resp := p.Result()
 	fmt.Println(string(resp.Body))
-	fmt.Println(resp.OK())
-	fmt.Println(resp.GetError())
 }

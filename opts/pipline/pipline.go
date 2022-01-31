@@ -2,7 +2,6 @@ package pipline
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/zengzhengrong/request"
 	"github.com/zengzhengrong/request/opts/client"
@@ -102,7 +101,6 @@ func (p *PipLine) Result(ctxs ...context.Context) request.Response {
 				if err != nil {
 					return err
 				}
-				fmt.Println(string(resp))
 				insRes[index] = resp
 				return nil
 			})
@@ -125,13 +123,9 @@ func (p *PipLine) Result(ctxs ...context.Context) request.Response {
 				ctxsetfinish(ctx)
 			}
 		}
-		// fmt.Println(ctx.Value(piplineCtxValueKey))
 	}
-	// fmt.Println(ctx.Value(piplineCtxValueKey))
-	// fmt.Println(insRes)
 	// process out
 	resp := p.Out(ctx, p.PipLineClient, insRes...)
-	// fmt.Println(resp)
 	return resp
 }
 
