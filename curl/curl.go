@@ -154,6 +154,28 @@ func POSTForm(url string, postbody any, args ...map[string]string) request.Respo
 
 }
 
+func POSTBind(v any, url string, postbody any, args ...map[string]string) error {
+	resp := POST(url, postbody, args...)
+	if !resp.OK() && resp.GetError() != nil {
+		return resp.GetError()
+	}
+	if err := resp.GetStruct(&v); err != nil {
+		return err
+	}
+	return nil
+}
+
+func POSTFormBind(v any, url string, postbody any, args ...map[string]string) error {
+	resp := POSTForm(url, postbody, args...)
+	if !resp.OK() && resp.GetError() != nil {
+		return resp.GetError()
+	}
+	if err := resp.GetStruct(&v); err != nil {
+		return err
+	}
+	return nil
+}
+
 // POSTBinaryBody is binary body upload
 func POSTBinaryBody(url string, binfile io.Reader, timeout time.Duration, args ...map[string]string) request.Response {
 	query, header := getqueryheader(args...)
@@ -231,26 +253,4 @@ func POSTMultiPartUpload(url string, files map[string]io.Reader, fields map[stri
 	}
 	resp.Body.Close()
 	return request.Response{Resp: resp, Body: body, Err: nil}
-}
-
-func POSTBind(v any, url string, postbody any, args ...map[string]string) error {
-	resp := POST(url, postbody, args...)
-	if !resp.OK() && resp.GetError() != nil {
-		return resp.GetError()
-	}
-	if err := resp.GetStruct(&v); err != nil {
-		return err
-	}
-	return nil
-}
-
-func POSTFormBind(v any, url string, postbody any, args ...map[string]string) error {
-	resp := POSTForm(url, postbody, args...)
-	if !resp.OK() && resp.GetError() != nil {
-		return resp.GetError()
-	}
-	if err := resp.GetStruct(&v); err != nil {
-		return err
-	}
-	return nil
 }
