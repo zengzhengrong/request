@@ -89,9 +89,9 @@ pipline
 	fmt.Println(string(resp.Body))
 ```
 
-pipline.WithParall(true) 并发请求pipline.WithIn 的函数
-pipline.WithClient(c) 流水线的所有请求复用会话
-pipline.WithIn 获取请求当作pipline.WithOut的入参
-pipline.WithOut 跟进WithIn 组合请求获取最终结果
-p.Result() 运行整个流水线获取pipline.WithOut响应
+pipline.WithParall(true) 并发请求pipline.WithIn 的函数  
+pipline.WithClient(c) 流水线的所有请求复用会话  
+pipline.WithIn 获取请求当作pipline.WithOut的入参  
+pipline.WithOut 跟进WithIn 组合请求获取最终结果  
+p.Result() 运行整个流水线获取pipline.WithOut响应  
 
