@@ -45,12 +45,35 @@ func Req(client *client.Client, method string, url string, postbody any, args ..
 	if err != nil {
 		return request.Response{Resp: resp, Body: nil, Err: err}
 	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return request.Response{Resp: resp, Body: nil, Err: err}
 	}
 	resp.Body.Close()
 	return request.Response{Resp: resp, Body: body, Err: nil}
+
+}
+
+// ReqRaw just warp the http.Response do not read body , must Close the body after you read the body
+func ReqRaw(client *client.Client, method string, url string, postbody any, args ...map[string]string) request.Response {
+	query, header := getqueryheader(args...)
+	r, err := request.NewReuqest(
+		method,
+		url,
+		request.WithBody(postbody),
+		request.WithQuery(query),
+		request.WithHeader(header),
+	)
+	if err != nil {
+		return request.Response{Resp: nil, Body: nil, Err: err}
+	}
+	resp, err := client.Do(r)
+	if err != nil {
+		return request.Response{Resp: resp, Body: nil, Err: err}
+	}
+	return request.Response{Resp: resp, Body: nil, Err: nil}
+
 }
 
 // GET is ShortCut get http method but not reuse tpc connect
@@ -61,8 +84,16 @@ func GET(url string, args ...map[string]string) request.Response {
 
 }
 
+// ClientGET is reuse client
 func ClientGET(client *client.Client, url string, args ...map[string]string) request.Response {
 	return Req(client, http.MethodGet, url, nil, args...)
+}
+
+// GETRaw is response body not close
+func GETRaw(url string, args ...map[string]string) request.Response {
+	client := client.NewClient(client.WithDefault())
+	return ReqRaw(client, http.MethodGet, url, nil, args...)
+
 }
 
 // POST is shortcut post method with json
@@ -78,6 +109,13 @@ func ClientPOST(client *client.Client, url string, postbody any, args ...map[str
 
 }
 
+// POSTRaw is response body not close
+func POSTRaw(url string, postbody any, args ...map[string]string) request.Response {
+	client := client.NewClient(client.WithDefault())
+	return ReqRaw(client, http.MethodPost, url, postbody, args...)
+
+}
+
 // PUT is shortcut post method with json
 func PUT(url string, postbody any, args ...map[string]string) request.Response {
 	client := client.NewClient(client.WithDefault())
@@ -88,6 +126,12 @@ func PUT(url string, postbody any, args ...map[string]string) request.Response {
 func ClientPUT(client *client.Client, url string, postbody any, args ...map[string]string) request.Response {
 	return Req(client, http.MethodPut, url, postbody, args...)
 
+}
+
+// PUTRaw is response body not close
+func PUTRaw(url string, postbody any, args ...map[string]string) request.Response {
+	client := client.NewClient(client.WithDefault())
+	return ReqRaw(client, http.MethodPut, url, postbody, args...)
 }
 
 // Patch is shortcut post method with json
@@ -102,6 +146,12 @@ func ClientPATCH(client *client.Client, url string, postbody any, args ...map[st
 
 }
 
+// PATCHRaw is response body not close
+func PATCHRaw(url string, postbody any, args ...map[string]string) request.Response {
+	client := client.NewClient(client.WithDefault())
+	return ReqRaw(client, http.MethodPatch, url, postbody, args...)
+}
+
 // Delete is shortcut post method with json
 func DELETE(url string, postbody any, args ...map[string]string) request.Response {
 	client := client.NewClient(client.WithDefault())
@@ -114,9 +164,15 @@ func ClientDELETE(client *client.Client, url string, postbody any, args ...map[s
 
 }
 
+// DELETERaw is response body not close
+func DELETERaw(url string, postbody any, args ...map[string]string) request.Response {
+	client := client.NewClient(client.WithDefault())
+	return ReqRaw(client, http.MethodDelete, url, postbody, args...)
+}
+
 // GETBind is bind struct with Get method
 func GETBind(v any, url string, args ...map[string]string) error {
-	resp := GET(url, args...)
+	resp := GETRaw(url, args...)
 	if !resp.OK() && resp.GetError() != nil {
 		return resp.GetError()
 	}
@@ -155,7 +211,7 @@ func POSTForm(url string, postbody any, args ...map[string]string) request.Respo
 }
 
 func POSTBind(v any, url string, postbody any, args ...map[string]string) error {
-	resp := POST(url, postbody, args...)
+	resp := POSTRaw(url, postbody, args...)
 	if !resp.OK() && resp.GetError() != nil {
 		return resp.GetError()
 	}
