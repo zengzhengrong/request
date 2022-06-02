@@ -142,6 +142,9 @@ func TestClient(t *testing.T) {
 	r2 := r.Clone()
 	fmt.Println(r2)
 	resp, err = client.Do(r2)
+	if err != nil {
+		panic(err)
+	}
 	res, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
