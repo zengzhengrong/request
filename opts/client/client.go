@@ -1,10 +1,16 @@
 package client
 
 import (
+	"bytes"
 	"crypto/tls"
+	"io"
 	"net/http"
+	"net/http/httptrace"
+	"os"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/tidwall/gjson"
 	"github.com/zengzhengrong/request"
 )
 
@@ -105,6 +111,53 @@ func NewClient(opts ...ClientOption) *Client {
 
 // Do is ShortCut http client do method
 func (client *Client) Do(r *request.Request) (*http.Response, error) {
+
+	if client.Opts.Debug {
+		// DEBUG mode request >> connect >> client(option) >> response(option)
+		spew.Dump(r.Opts)
+		clientTrace := defaultclientTrace() // use default trace if open debug
+		req := r.HttpReq.WithContext(httptrace.WithClientTrace(r.HttpReq.Context(), clientTrace))
+		resp, err := client.HttpClient.Do(req)
+		if os.Getenv("REQUEST_CLIENT_DEBUG") != "" {
+			spew.Dump(client.Opts)
+		}
+		if os.Getenv("REQUEST_RESPONSE_DEBUG") != "" {
+			body, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()                               //  must close
+			resp.Body = io.NopCloser(bytes.NewBuffer(body)) // rewrite resp Body
+			spew.Dump(gjson.ParseBytes(body))
+		}
+		return resp, err
+	}
 	resp, err := client.HttpClient.Do(r.HttpReq)
 	return resp, err
+
+}
+
+func defaultclientTrace() (clientTrace *httptrace.ClientTrace) {
+
+	clientTrace = &httptrace.ClientTrace{
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			spew.Dump(info)
+		},
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			spew.Dump(info)
+		},
+		GetConn: func(hostPort string) {
+			spew.Dump(hostPort)
+		},
+		GotConn: func(gci httptrace.GotConnInfo) {
+			if os.Getenv("REQUEST_CONN_DEBUG") != "" {
+				spew.Dump(gci)
+			} else {
+				reused := struct {
+					Reused bool
+				}{gci.Reused}
+				spew.Dump(reused)
+			}
+
+		},
+	}
+
+	return clientTrace
 }

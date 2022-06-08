@@ -3,7 +3,6 @@ package request
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,13 +14,6 @@ type Response struct {
 	Resp *http.Response
 	Body []byte
 	Err  error
-}
-
-func (r *Response) statusCodeError() error {
-	if r.Resp.ContentLength > 0 {
-		return errors.New(string(r.Body))
-	}
-	return StatusCodeError
 }
 
 // OK is StatusCode 200
@@ -40,10 +32,7 @@ func (r *Response) OKByJsonKey(key string, value any) bool {
 		return false
 	}
 	res := gjson.GetBytes(r.Body, key)
-	if res.Value() == value {
-		return true
-	}
-	return false
+	return res.Value() == value
 
 }
 

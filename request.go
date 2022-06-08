@@ -2,6 +2,7 @@ package request
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"mime/multipart"
@@ -27,6 +28,7 @@ type ReqOptions struct {
 	Body        io.Reader
 	RawBody     any
 	Query       string
+	Context     context.Context
 }
 type ReqOption interface {
 	apply(*ReqOptions)
@@ -39,6 +41,11 @@ type BodyOption struct {
 	raw any
 }
 type QueryOption string
+type ContextOption struct{ context.Context }
+
+func (c ContextOption) apply(opts *ReqOptions) {
+	opts.Context = c.Context
+}
 
 func (c ContentTypeOption) apply(opts *ReqOptions) {
 	opts.ContentType = string(c)
@@ -49,7 +56,7 @@ func (h HeaderOption) apply(opts *ReqOptions) {
 }
 func (q QueryOption) apply(opts *ReqOptions) {
 	opts.Query = string(q)
-	if strings.Index(opts.Url, "?") != -1 {
+	if strings.Contains(opts.Url, "?") {
 		opts.Url = opts.Url + "&" + string(q)
 	} else {
 		opts.Url = opts.Url + "?" + string(q)
@@ -100,6 +107,10 @@ func WithQuery(query map[string]string, sortAsc ...bool) ReqOption {
 	return QueryOption(HttpBuildQuery(query, sortAsc...))
 }
 
+func WithContext(ctx context.Context) ContextOption {
+	return ContextOption(struct{ context.Context }{ctx})
+}
+
 func (r *Request) String() string {
 	bf := bytes.NewBuffer([]byte{})
 	jsonEncoder := json.NewEncoder(bf)
@@ -135,6 +146,9 @@ func NewReuqest(method string, url string, opts ...ReqOption) (*Request, error) 
 		options.Header["Content-Type"] = options.ContentType
 	}
 	r, err := http.NewRequest(options.Method, options.Url, options.Body)
+	if options.Context != nil {
+		r = r.WithContext(options.Context)
+	}
 	if err != nil {
 		return nil, err
 	}
