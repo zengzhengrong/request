@@ -394,13 +394,13 @@ func TestNewPipLine(t *testing.T) {
 		pipline.WithParall(true),
 		pipline.WithClient(c),
 		pipline.WithIn(func(ctx context.Context, cli *client.Client) ([]byte, error) {
-			resp := curl.ClientGET(cli, "https://httpbin.org/get", testquery(), testheader())
+			resp := cli.GET("https://httpbin.org/get", testquery(), testheader())
 			if resp.GetError() != nil {
 				return nil, resp.GetError()
 			}
 			return resp.Body, nil
 		}, func(ctx context.Context, cli *client.Client) ([]byte, error) {
-			resp := curl.ClientPOST(cli, "https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+			resp := cli.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
 			if resp.GetError() != nil {
 				return nil, resp.GetError()
 			}
@@ -417,7 +417,7 @@ func TestNewPipLine(t *testing.T) {
 				R2: r2,
 			}
 			b, _ := json.Marshal(body)
-			resp := curl.ClientPOST(cli, "https://httpbin.org/post", b, testquery(), testheader())
+			resp := cli.POST("https://httpbin.org/post", b, testquery(), testheader())
 			return resp
 		}),
 	)
@@ -476,4 +476,16 @@ func TestWithContext(t *testing.T) {
 	assert.Equal(t, "200 OK", resp.Status)
 
 	resp.Body.Close()
+}
+
+func TestReuseClient(t *testing.T) {
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
+	)
+	resp1 := client.GET("https://httpbin.org/get")
+	resp2 := client.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+	fmt.Println(resp1.GetBodyString())
+	fmt.Println(resp2.GetBodyString())
+
 }

@@ -134,6 +134,82 @@ func (client *Client) Do(r *request.Request) (*http.Response, error) {
 
 }
 
+func (client *Client) Req(method string, url string, postbody any, args ...map[string]string) request.Response {
+	query, header := request.Getqueryheader(args...)
+	r, err := request.NewReuqest(
+		method,
+		url,
+		request.WithBody(postbody),
+		request.WithQuery(query),
+		request.WithHeader(header),
+	)
+	if err != nil {
+		return request.Response{Resp: nil, Body: nil, Err: err}
+	}
+	resp, err := client.Do(r)
+	if err != nil {
+		return request.Response{Resp: resp, Body: nil, Err: err}
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return request.Response{Resp: resp, Body: nil, Err: err}
+	}
+	resp.Body.Close()
+	return request.Response{Resp: resp, Body: body, Err: nil}
+
+}
+
+// ReqRaw just warp the http.Response do not read body , must Close the body after you read the body
+func (client *Client) ReqRaw(method string, url string, postbody any, args ...map[string]string) request.Response {
+	query, header := request.Getqueryheader(args...)
+	r, err := request.NewReuqest(
+		method,
+		url,
+		request.WithBody(postbody),
+		request.WithQuery(query),
+		request.WithHeader(header),
+	)
+	if err != nil {
+		return request.Response{Resp: nil, Body: nil, Err: err}
+	}
+	resp, err := client.Do(r)
+	if err != nil {
+		return request.Response{Resp: resp, Body: nil, Err: err}
+	}
+	return request.Response{Resp: resp, Body: nil, Err: nil}
+
+}
+
+// GET is reuse client
+func (client *Client) GET(url string, args ...map[string]string) request.Response {
+	return client.Req(http.MethodGet, url, nil, args...)
+}
+
+// POST is shortcut post method with json and client
+func (client *Client) POST(url string, postbody any, args ...map[string]string) request.Response {
+	return client.Req(http.MethodPost, url, postbody, args...)
+
+}
+
+// PUT is shortcut post method with json and client
+func (client *Client) PUT(url string, postbody any, args ...map[string]string) request.Response {
+	return client.Req(http.MethodPut, url, postbody, args...)
+
+}
+
+// PATCH is shortcut post method with json and client
+func (client *Client) PATCH(url string, postbody any, args ...map[string]string) request.Response {
+	return client.Req(http.MethodPatch, url, postbody, args...)
+
+}
+
+// DELETE is shortcut post method with json and client
+func (client *Client) DELETE(url string, postbody any, args ...map[string]string) request.Response {
+	return client.Req(http.MethodDelete, url, postbody, args...)
+
+}
+
 func defaultclientTrace() (clientTrace *httptrace.ClientTrace) {
 
 	clientTrace = &httptrace.ClientTrace{

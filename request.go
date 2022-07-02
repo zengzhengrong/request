@@ -143,6 +143,9 @@ func NewReuqest(method string, url string, opts ...ReqOption) (*Request, error) 
 		o.apply(options)
 	}
 	if options.ContentType != "" {
+		if options.Header == nil {
+			options.Header = make(map[string]string)
+		}
 		options.Header["Content-Type"] = options.ContentType
 	}
 	r, err := http.NewRequest(options.Method, options.Url, options.Body)
