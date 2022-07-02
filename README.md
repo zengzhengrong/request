@@ -49,6 +49,22 @@ POST form
 ```
 
 
+## 复用会话
+
+```
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
+	)
+	resp1 := client.GET("https://httpbin.org/get")
+	resp2 := client.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+	fmt.Println(resp1.GetBodyString())
+	fmt.Println(resp2.GetBodyString())
+```
+
+开启debug 模式可以看到打印  Reused: (bool) true 字样 说明 第二个POST请求复用会话成功
+
+
 ## 流水线请求
 
 pipline
