@@ -2,6 +2,7 @@ package pipline
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/zengzhengrong/request"
 	"github.com/zengzhengrong/request/opts/client"
@@ -9,15 +10,16 @@ import (
 )
 
 const (
-	piplineCtxValueKey = "values"
+	piplineCtxValueKey piplineCtxKeyType = "values"
 )
 
 type (
-	In            func(ctx context.Context, client *client.Client) ([]byte, error)
-	Ins           []In
-	Out           func(ctx context.Context, client *client.Client, In ...[]byte) request.Response
-	Parall        bool
-	PipLineClient struct{ *client.Client }
+	piplineCtxKeyType string
+	In                func(ctx context.Context, client *client.Client) ([]byte, error)
+	Ins               []In
+	Out               func(ctx context.Context, client *client.Client, In ...[]byte) request.Response
+	Parall            bool
+	PipLineClient     struct{ *client.Client }
 )
 
 type PipLineOption interface {
@@ -94,11 +96,12 @@ func (p *PipLine) Result(ctxs ...context.Context) request.Response {
 		for index, fn := range p.Ins {
 			ctxmap["current_request_index"] = index
 			ctx = context.WithValue(ctx, piplineCtxValueKey, ctxmap)
-			fn := fn
+			fn := fn // reassignment fn var
 			index := index
 			g.Go(func() error {
 				resp, err := fn(ctx, p.PipLineClient)
 				if err != nil {
+					err = fmt.Errorf("ins[%v]:[%w]", index, err)
 					return err
 				}
 				insRes[index] = resp
@@ -112,10 +115,10 @@ func (p *PipLine) Result(ctxs ...context.Context) request.Response {
 	} else {
 		for index, fn := range p.Ins {
 			ctxmap["current_request_index"] = index
-			ctx = context.WithValue(ctx, "values", ctxmap)
+			ctx = context.WithValue(ctx, piplineCtxValueKey, ctxmap)
 			resp, err := fn(ctx, p.PipLineClient)
-			// fmt.Println(resp)
 			if err != nil {
+				err = fmt.Errorf("ins[%v]:[%w]", index, err)
 				return request.Response{Err: err}
 			}
 			insRes[index] = resp

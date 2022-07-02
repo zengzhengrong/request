@@ -7,10 +7,13 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httptrace"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/gjson"
 	"github.com/zengzhengrong/request"
@@ -71,6 +74,33 @@ func testformbody() map[string]string {
 		"aa": "1",
 		"ba": "2",
 	}
+}
+func defaultclientTrace() (clientTrace *httptrace.ClientTrace) {
+
+	clientTrace = &httptrace.ClientTrace{
+		DNSStart: func(info httptrace.DNSStartInfo) {
+			spew.Dump(info)
+		},
+		DNSDone: func(info httptrace.DNSDoneInfo) {
+			spew.Dump(info)
+		},
+		GetConn: func(hostPort string) {
+			spew.Dump(hostPort)
+		},
+		GotConn: func(gci httptrace.GotConnInfo) {
+			if os.Getenv("REQUEST_CONN_DEBUG") != "" {
+				spew.Dump(gci)
+			} else {
+				reused := struct {
+					Reused bool
+				}{gci.Reused}
+				spew.Dump(reused)
+			}
+
+		},
+	}
+
+	return clientTrace
 }
 
 func TestHtppQuery(t *testing.T) {
@@ -142,6 +172,9 @@ func TestClient(t *testing.T) {
 	r2 := r.Clone()
 	fmt.Println(r2)
 	resp, err = client.Do(r2)
+	if err != nil {
+		panic(err)
+	}
 	res, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
@@ -352,18 +385,22 @@ func TestShortCutPOSTFormBind(t *testing.T) {
 }
 
 func TestNewPipLine(t *testing.T) {
+	err := os.Setenv("REQUEST_DEBUG", "1")
+	if err != nil {
+		panic(err)
+	}
 	c := client.NewClient(client.WithDefault())
 	p := pipline.NewPipLine(
 		pipline.WithParall(true),
 		pipline.WithClient(c),
 		pipline.WithIn(func(ctx context.Context, cli *client.Client) ([]byte, error) {
-			resp := curl.ClientGET(cli, "https://httpbin.org/get", testquery(), testheader())
+			resp := cli.GET("https://httpbin.org/get", testquery(), testheader())
 			if resp.GetError() != nil {
 				return nil, resp.GetError()
 			}
 			return resp.Body, nil
 		}, func(ctx context.Context, cli *client.Client) ([]byte, error) {
-			resp := curl.ClientPOST(cli, "https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+			resp := cli.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
 			if resp.GetError() != nil {
 				return nil, resp.GetError()
 			}
@@ -380,10 +417,75 @@ func TestNewPipLine(t *testing.T) {
 				R2: r2,
 			}
 			b, _ := json.Marshal(body)
-			resp := curl.ClientPOST(cli, "https://httpbin.org/post", b, testquery(), testheader())
+			resp := cli.POST("https://httpbin.org/post", b, testquery(), testheader())
 			return resp
 		}),
 	)
 	resp := p.Result()
+	if resp.Err != nil {
+		panic(resp.Err)
+	}
 	fmt.Println(string(resp.Body))
+}
+
+func TestDEBUG(t *testing.T) {
+	err := os.Setenv("REQUEST_DEBUG", "1")
+	if err != nil {
+		panic(err)
+	}
+	err = os.Setenv("REQUEST_RESPONSE_DEBUG", "1")
+	if err != nil {
+		panic(err)
+	}
+	result := &Result{}
+	err = curl.GETBind(result, "https://httpbin.org/get", testquery(), testheader())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(result)
+}
+
+func TestWithContext(t *testing.T) {
+	h := testheader()
+	q := testquery()
+	body := testjsonbody()
+	clientTrace := defaultclientTrace()
+	ctx := httptrace.WithClientTrace(context.Background(), clientTrace)
+	r, err := request.NewReuqest(
+		http.MethodGet,
+		"https://httpbin.org/get",
+		request.WithHeader(h),
+		request.WithBody(body),
+		request.WithQuery(q),
+		request.WithContext(ctx),
+	)
+	if err != nil {
+		panic(err)
+	}
+	client := client.NewClient(
+		client.WithDebug(false),
+		client.WithTimeOut(10*time.Second),
+	)
+	resp, err := client.Do(r)
+	if err != nil {
+		panic(err)
+	}
+	resbyte, _ := io.ReadAll(resp.Body)
+
+	fmt.Println(string(resbyte))
+	assert.Equal(t, "200 OK", resp.Status)
+
+	resp.Body.Close()
+}
+
+func TestReuseClient(t *testing.T) {
+	client := client.NewClient(
+		client.WithDebug(true),
+		client.WithTimeOut(10*time.Second),
+	)
+	resp1 := client.GET("https://httpbin.org/get")
+	resp2 := client.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+	fmt.Println(resp1.GetBodyString())
+	fmt.Println(resp2.GetBodyString())
+
 }
