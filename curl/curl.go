@@ -90,6 +90,30 @@ func GETBind(v any, url string, args ...map[string]string) error {
 
 }
 
+// POSTBind is bind struct with Get method
+func POSTBind(v any, url string, postbody any, args ...map[string]string) error {
+	resp := POSTRaw(url, postbody, args...)
+	if !resp.OK() && resp.GetError() != nil {
+		return resp.GetError()
+	}
+	if err := resp.GetStruct(&v); err != nil {
+		return err
+	}
+	return nil
+}
+
+// POSTFormBind is bind struct with Get method
+func POSTFormBind(v any, url string, postbody any, args ...map[string]string) error {
+	resp := POSTForm(url, postbody, args...)
+	if !resp.OK() && resp.GetError() != nil {
+		return resp.GetError()
+	}
+	if err := resp.GetStruct(&v); err != nil {
+		return err
+	}
+	return nil
+}
+
 func POSTForm(url string, postbody any, args ...map[string]string) request.Response {
 	query, header := request.Getqueryheader(args...)
 	r, err := request.NewReuqest(
@@ -115,28 +139,6 @@ func POSTForm(url string, postbody any, args ...map[string]string) request.Respo
 	resp.Body.Close()
 	return request.Response{Resp: resp, Body: body, Err: nil}
 
-}
-
-func POSTBind(v any, url string, postbody any, args ...map[string]string) error {
-	resp := POSTRaw(url, postbody, args...)
-	if !resp.OK() && resp.GetError() != nil {
-		return resp.GetError()
-	}
-	if err := resp.GetStruct(&v); err != nil {
-		return err
-	}
-	return nil
-}
-
-func POSTFormBind(v any, url string, postbody any, args ...map[string]string) error {
-	resp := POSTForm(url, postbody, args...)
-	if !resp.OK() && resp.GetError() != nil {
-		return resp.GetError()
-	}
-	if err := resp.GetStruct(&v); err != nil {
-		return err
-	}
-	return nil
 }
 
 // POSTBinaryBody is binary body upload
@@ -194,6 +196,9 @@ func POSTMultiPartUpload(url string, files map[string]io.Reader, fields map[stri
 		}
 	}
 	err := writer.Close()
+	if err != nil {
+		return request.Response{Resp: nil, Body: nil, Err: err}
+	}
 	query, header := request.Getqueryheader(args...)
 	r, err := request.NewReuqest(
 		http.MethodPost,

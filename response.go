@@ -36,7 +36,7 @@ func (r *Response) OKByJsonKey(key string, value any) bool {
 
 }
 
-func (r *Response) Error() string {
+func (r *Response) ErrorString() string {
 	if r.Err != nil {
 		err := fmt.Errorf("Response err: %w", r.Err)
 		return err.Error()

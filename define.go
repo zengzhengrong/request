@@ -1,6 +1,7 @@
 package request
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"time"
@@ -54,5 +55,9 @@ func Getqueryheader(args ...map[string]string) (map[string]string, map[string]st
 var MaxUploadThreads int = 20
 var DefaultDebug = SetDefaultDebug
 var DefaultCheckRedirect = func(req *http.Request, via []*http.Request) error {
-	return http.ErrUseLastResponse
+	// return http.ErrUseLastResponse
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	return nil
 }
