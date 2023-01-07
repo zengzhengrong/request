@@ -1,4 +1,4 @@
-package request
+package config
 
 import (
 	"errors"
@@ -33,23 +33,6 @@ func SetDefaultDebug() bool {
 		return false
 	}
 	return bl
-}
-
-func Getqueryheader(args ...map[string]string) (map[string]string, map[string]string) {
-	var (
-		query  map[string]string
-		header map[string]string
-	)
-
-	if len(args) > 0 {
-		query = args[0]
-
-	}
-
-	if len(args) == 2 {
-		header = args[1]
-	}
-	return query, header
 }
 
 var MaxUploadThreads int = 20

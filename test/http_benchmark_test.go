@@ -7,7 +7,7 @@ import (
 	"github.com/zengzhengrong/request/opts/client"
 )
 
-func runTenGETWithoutReused() {
+func TestTenGETWithoutReused(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		resp := curl.GET("http://127.0.0.1:8081/get", query, header)
 		if resp.Err != nil {
@@ -16,7 +16,7 @@ func runTenGETWithoutReused() {
 	}
 }
 
-func runTenGETWithReused() {
+func TestTenGETWithReused(t *testing.T) {
 	client := client.NewClient(
 		client.WithDefault(),
 	)

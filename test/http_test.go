@@ -15,10 +15,11 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/gjson"
-	"github.com/zengzhengrong/request"
 	"github.com/zengzhengrong/request/curl"
 	"github.com/zengzhengrong/request/opts/client"
 	"github.com/zengzhengrong/request/opts/pipline"
+	"github.com/zengzhengrong/request/request"
+	"github.com/zengzhengrong/request/response"
 )
 
 var (
@@ -235,7 +236,7 @@ func TestPOST(t *testing.T) {
 	body := testjsonbody()
 	r, err := request.NewReuqest(
 		http.MethodPost,
-		"http://127.0.0.1:8081/post",
+		"https://httpbin.org/post",
 		request.WithHeader(h),
 		request.WithBody(body),
 		request.WithQuery(q),
@@ -436,7 +437,7 @@ func TestNewPipLine(t *testing.T) {
 			}
 			return resp.Body, nil
 		}),
-		pipline.WithOut(func(ctx context.Context, cli *client.Client, Ins ...[]byte) request.Response {
+		pipline.WithOut(func(ctx context.Context, cli *client.Client, Ins ...[]byte) response.Response {
 			r1 := gjson.GetBytes(Ins[0], "args.a").String()
 			r2 := gjson.GetBytes(Ins[1], "json").Value()
 			body := struct {

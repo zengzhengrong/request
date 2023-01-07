@@ -11,7 +11,9 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/tidwall/gjson"
-	"github.com/zengzhengrong/request"
+	"github.com/zengzhengrong/request/config"
+	"github.com/zengzhengrong/request/request"
+	"github.com/zengzhengrong/request/response"
 )
 
 type DebugOption bool
@@ -115,10 +117,10 @@ type Client struct {
 
 func NewClient(opts ...ClientOption) *Client {
 	options := &ClientOptions{
-		Debug:         request.SetDefaultDebug(),
-		Timeout:       request.DefaultTimeout,
+		Debug:         config.SetDefaultDebug(),
+		Timeout:       config.DefaultTimeout,
 		Transport:     http.DefaultTransport,
-		CheckRedirect: request.DefaultCheckRedirect,
+		CheckRedirect: config.DefaultCheckRedirect,
 	}
 	for _, o := range opts {
 		o.apply(options)
@@ -162,7 +164,7 @@ func (client *Client) Do(r *request.Request) (*http.Response, error) {
 
 }
 
-func (client *Client) Req(method string, url string, postbody any, args ...map[string]string) request.Response {
+func (client *Client) Req(method string, url string, postbody any, args ...map[string]string) response.Response {
 	var body []byte
 	query, header := request.Getqueryheader(args...)
 	r, err := request.NewReuqest(
@@ -173,11 +175,11 @@ func (client *Client) Req(method string, url string, postbody any, args ...map[s
 		request.WithHeader(header),
 	)
 	if err != nil {
-		return request.Response{Resp: nil, Body: nil, Err: err}
+		return response.Response{Resp: nil, Body: nil, Err: err}
 	}
 	resp, err := client.Do(r)
 	if err != nil {
-		return request.Response{Resp: resp, Body: nil, Err: err}
+		return response.Response{Resp: resp, Body: nil, Err: err}
 	}
 	defer resp.Body.Close()
 
@@ -187,15 +189,15 @@ func (client *Client) Req(method string, url string, postbody any, args ...map[s
 			// if body size less than content-length
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
-				return request.Response{Resp: resp, Body: nil, Err: err}
+				return response.Response{Resp: resp, Body: nil, Err: err}
 			}
-			return request.Response{Resp: resp, Body: body, Err: nil}
+			return response.Response{Resp: resp, Body: body, Err: nil}
 		}
 		buf := make([]byte, 0, client.Opts.RespBodySize)
 		buffer := bytes.NewBuffer(buf)
 		_, err := io.Copy(buffer, resp.Body)
 		if err != nil {
-			return request.Response{Resp: resp, Body: nil, Err: err}
+			return response.Response{Resp: resp, Body: nil, Err: err}
 		}
 		temp := buffer.Bytes()
 		length := len(temp)
@@ -206,22 +208,22 @@ func (client *Client) Req(method string, url string, postbody any, args ...map[s
 			body = temp
 		}
 
-		return request.Response{Resp: resp, Body: body, Err: nil}
+		return response.Response{Resp: resp, Body: body, Err: nil}
 	} else {
 		body = make([]byte, resp.ContentLength)
 	}
 	_, err = io.ReadFull(resp.Body, body)
 	if err != nil {
 		if err == io.EOF {
-			return request.Response{Resp: resp, Body: body, Err: nil}
+			return response.Response{Resp: resp, Body: body, Err: nil}
 		}
-		return request.Response{Resp: resp, Body: nil, Err: err}
+		return response.Response{Resp: resp, Body: nil, Err: err}
 	}
-	return request.Response{Resp: resp, Body: body, Err: nil}
+	return response.Response{Resp: resp, Body: body, Err: nil}
 }
 
 // ReqRaw just warp the http.Response do not read body , must Close the body after you read the body
-func (client *Client) ReqRaw(method string, url string, postbody any, args ...map[string]string) request.Response {
+func (client *Client) ReqRaw(method string, url string, postbody any, args ...map[string]string) response.Response {
 	query, header := request.Getqueryheader(args...)
 	r, err := request.NewReuqest(
 		method,
@@ -231,41 +233,41 @@ func (client *Client) ReqRaw(method string, url string, postbody any, args ...ma
 		request.WithHeader(header),
 	)
 	if err != nil {
-		return request.Response{Resp: nil, Body: nil, Err: err}
+		return response.Response{Resp: nil, Body: nil, Err: err}
 	}
 	resp, err := client.Do(r)
 	if err != nil {
-		return request.Response{Resp: resp, Body: nil, Err: err}
+		return response.Response{Resp: resp, Body: nil, Err: err}
 	}
-	return request.Response{Resp: resp, Body: nil, Err: nil}
+	return response.Response{Resp: resp, Body: nil, Err: nil}
 
 }
 
 // GET is reuse client
-func (client *Client) GET(url string, args ...map[string]string) request.Response {
+func (client *Client) GET(url string, args ...map[string]string) response.Response {
 	return client.Req(http.MethodGet, url, nil, args...)
 }
 
 // POST is shortcut post method with json and client
-func (client *Client) POST(url string, postbody any, args ...map[string]string) request.Response {
+func (client *Client) POST(url string, postbody any, args ...map[string]string) response.Response {
 	return client.Req(http.MethodPost, url, postbody, args...)
 
 }
 
 // PUT is shortcut post method with json and client
-func (client *Client) PUT(url string, postbody any, args ...map[string]string) request.Response {
+func (client *Client) PUT(url string, postbody any, args ...map[string]string) response.Response {
 	return client.Req(http.MethodPut, url, postbody, args...)
 
 }
 
 // PATCH is shortcut post method with json and client
-func (client *Client) PATCH(url string, postbody any, args ...map[string]string) request.Response {
+func (client *Client) PATCH(url string, postbody any, args ...map[string]string) response.Response {
 	return client.Req(http.MethodPatch, url, postbody, args...)
 
 }
 
 // DELETE is shortcut post method with json and client
-func (client *Client) DELETE(url string, postbody any, args ...map[string]string) request.Response {
+func (client *Client) DELETE(url string, postbody any, args ...map[string]string) response.Response {
 	return client.Req(http.MethodDelete, url, postbody, args...)
 
 }

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/zengzhengrong/request"
 	"github.com/zengzhengrong/request/opts/client"
+	"github.com/zengzhengrong/request/response"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -17,7 +17,7 @@ type (
 	piplineCtxKeyType string
 	In                func(ctx context.Context, client *client.Client) ([]byte, error)
 	Ins               []In
-	Out               func(ctx context.Context, client *client.Client, In ...[]byte) request.Response
+	Out               func(ctx context.Context, client *client.Client, In ...[]byte) response.Response
 	Parall            bool
 	PipLineClient     struct{ *client.Client }
 )
@@ -78,7 +78,7 @@ func ctxsetfinish(ctx context.Context) context.Context {
 	return context.WithValue(ctx, piplineCtxValueKey, v)
 }
 
-func (p *PipLine) Result(ctxs ...context.Context) request.Response {
+func (p *PipLine) Result(ctxs ...context.Context) response.Response {
 	if len(ctxs) > 0 {
 		p.Ctx = ctxs[0]
 	}
@@ -109,7 +109,7 @@ func (p *PipLine) Result(ctxs ...context.Context) request.Response {
 			})
 		}
 		if err := g.Wait(); err != nil {
-			return request.Response{Err: err}
+			return response.Response{Err: err}
 		}
 		ctxsetfinish(ctx)
 	} else {
@@ -119,7 +119,7 @@ func (p *PipLine) Result(ctxs ...context.Context) request.Response {
 			resp, err := fn(ctx, p.PipLineClient)
 			if err != nil {
 				err = fmt.Errorf("ins[%v]:[%w]", index, err)
-				return request.Response{Err: err}
+				return response.Response{Err: err}
 			}
 			insRes[index] = resp
 			if index == len(p.Ins)-1 {
