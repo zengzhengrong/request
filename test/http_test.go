@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptrace"
 	"os"
@@ -16,10 +15,19 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/assert"
 	"github.com/tidwall/gjson"
-	"github.com/zengzhengrong/request"
 	"github.com/zengzhengrong/request/curl"
 	"github.com/zengzhengrong/request/opts/client"
 	"github.com/zengzhengrong/request/opts/pipline"
+	"github.com/zengzhengrong/request/request"
+	"github.com/zengzhengrong/request/response"
+)
+
+var (
+	query              map[string]string
+	header             map[string]string
+	jsonbody           []byte
+	formbody           map[string]string
+	defaultclienttrace *httptrace.ClientTrace
 )
 
 type Result struct {
@@ -103,6 +111,16 @@ func defaultclientTrace() (clientTrace *httptrace.ClientTrace) {
 	return clientTrace
 }
 
+func TestMain(m *testing.M) {
+	fmt.Println("初始化参数")
+	query = testquery()
+	header = testheader()
+	jsonbody = testjsonbody()
+	formbody = testformbody()
+	defaultclienttrace = defaultclientTrace()
+	m.Run()
+}
+
 func TestHtppQuery(t *testing.T) {
 	url := "https://httpbin.org?"
 	args := map[string]string{
@@ -157,7 +175,7 @@ func TestClient(t *testing.T) {
 		panic(err)
 	}
 
-	res, err := ioutil.ReadAll(resp.Body)
+	res, err := io.ReadAll(resp.Body)
 
 	if err != nil {
 		panic(err)
@@ -175,7 +193,7 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	res, err = ioutil.ReadAll(resp.Body)
+	res, err = io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
@@ -198,8 +216,7 @@ func TestGET(t *testing.T) {
 		panic(err)
 	}
 	client := client.NewClient(
-		client.WithDebug(true),
-		client.WithTimeOut(10*time.Second),
+		client.WithTimeOut(10 * time.Second),
 	)
 	resp, err := client.Do(r)
 	if err != nil {
@@ -228,19 +245,33 @@ func TestPOST(t *testing.T) {
 		panic(err)
 	}
 	client := client.NewClient(
-		client.WithDebug(true),
+		client.WithDebug(),
 		client.WithTimeOut(10*time.Second),
 	)
 	resp, err := client.Do(r)
 	if err != nil {
 		panic(err)
 	}
-	resbyte, _ := io.ReadAll(resp.Body)
+	tobody := make([]byte, resp.ContentLength)
 
-	fmt.Println(string(resbyte))
+	n, err := io.ReadFull(resp.Body, tobody)
+	if err != nil {
+		panic(err)
+	}
+	s := string(tobody)
+	fmt.Println(n)
+	fmt.Println(s)
+	fmt.Println(len(s))
 	assert.Equal(t, "200 OK", resp.Status)
 
-	resp.Body.Close()
+	err = resp.Body.Close()
+	if err != nil {
+		panic(err)
+	}
+	err = resp.Body.Close()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestPUT(t *testing.T) {
@@ -394,19 +425,19 @@ func TestNewPipLine(t *testing.T) {
 		pipline.WithParall(true),
 		pipline.WithClient(c),
 		pipline.WithIn(func(ctx context.Context, cli *client.Client) ([]byte, error) {
-			resp := cli.GET("https://httpbin.org/get", testquery(), testheader())
+			resp := cli.GET("https://httpbin.org/get", query, header)
 			if resp.GetError() != nil {
 				return nil, resp.GetError()
 			}
 			return resp.Body, nil
 		}, func(ctx context.Context, cli *client.Client) ([]byte, error) {
-			resp := cli.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+			resp := cli.POST("https://httpbin.org/post", jsonbody, query, header)
 			if resp.GetError() != nil {
 				return nil, resp.GetError()
 			}
 			return resp.Body, nil
 		}),
-		pipline.WithOut(func(ctx context.Context, cli *client.Client, Ins ...[]byte) request.Response {
+		pipline.WithOut(func(ctx context.Context, cli *client.Client, Ins ...[]byte) response.Response {
 			r1 := gjson.GetBytes(Ins[0], "args.a").String()
 			r2 := gjson.GetBytes(Ins[1], "json").Value()
 			body := struct {
@@ -417,7 +448,7 @@ func TestNewPipLine(t *testing.T) {
 				R2: r2,
 			}
 			b, _ := json.Marshal(body)
-			resp := cli.POST("https://httpbin.org/post", b, testquery(), testheader())
+			resp := cli.POST("https://httpbin.org/post", b, query, header)
 			return resp
 		}),
 	)
@@ -480,12 +511,18 @@ func TestWithContext(t *testing.T) {
 
 func TestReuseClient(t *testing.T) {
 	client := client.NewClient(
-		client.WithDebug(true),
+		client.WithPreRespBodySize(500),
 		client.WithTimeOut(10*time.Second),
 	)
-	resp1 := client.GET("https://httpbin.org/get")
-	resp2 := client.POST("https://httpbin.org/post", testjsonbody(), testquery(), testheader())
+	resp1 := client.GET("https://httpbin.org/get", query, header)
+	// resp2 := client.POST("https://httpbin.org/post", jsonbody, query, header)
+	// resp3 := client.PATCH("https://httpbin.org/patch", jsonbody, query, header)
+	// resp4 := client.PUT("https://httpbin.org/put", jsonbody, query, header)
+	// resp5 := client.DELETE("https://httpbin.org/delete", query, header)
 	fmt.Println(resp1.GetBodyString())
-	fmt.Println(resp2.GetBodyString())
+	// fmt.Println(resp2.GetBodyString())
+	// fmt.Println(resp3.GetBodyString())
+	// fmt.Println(resp4.GetBodyString())
+	// fmt.Println(resp5.GetBodyString())
 
 }

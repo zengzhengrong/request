@@ -1,4 +1,4 @@
-package request
+package response
 
 import (
 	"bytes"
@@ -9,6 +9,18 @@ import (
 
 	"github.com/tidwall/gjson"
 )
+
+// Response is  interface TODO:
+type CustomResponse interface {
+	ParseBody(*http.Response) ([]byte, error)
+	Error() error
+	GETBind(any) error
+	POSTBind(any) error
+	PUTBind(any) error
+	PATCHBind(any) error
+	DELETEBind(any) error
+	String() (string, error)
+}
 
 type Response struct {
 	Resp *http.Response
@@ -36,7 +48,7 @@ func (r *Response) OKByJsonKey(key string, value any) bool {
 
 }
 
-func (r *Response) Error() string {
+func (r *Response) ErrorString() string {
 	if r.Err != nil {
 		err := fmt.Errorf("Response err: %w", r.Err)
 		return err.Error()

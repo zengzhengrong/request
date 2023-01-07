@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cast"
+	"github.com/zengzhengrong/request/config"
 )
 
 type Request struct {
@@ -137,7 +138,7 @@ func NewReuqest(method string, url string, opts ...ReqOption) (*Request, error) 
 	options := &ReqOptions{
 		Method:      method,
 		Url:         url,
-		ContentType: DefaultContentType,
+		ContentType: config.DefaultContentType,
 	}
 	for _, o := range opts {
 		o.apply(options)
@@ -222,7 +223,7 @@ func GetFileOrFiles(req *http.Request) (bool, map[string]*multipart.FileHeader, 
 	var name string
 	var IsSingle bool
 	files := make(map[string]*multipart.FileHeader, 20)
-	for i := 0; i < MaxUploadThreads; i++ {
+	for i := 0; i < config.MaxUploadThreads; i++ {
 		name = "file_" + cast.ToString(i)
 		fs, err := fromfile(req, name)
 		if err != nil && i == 0 {
@@ -249,7 +250,7 @@ func GetFileOrFiles(req *http.Request) (bool, map[string]*multipart.FileHeader, 
 
 func fromfile(req *http.Request, name string) (*multipart.FileHeader, error) {
 	if req.MultipartForm == nil {
-		if err := req.ParseMultipartForm(DefaultMultipartMemory); err != nil {
+		if err := req.ParseMultipartForm(config.DefaultMultipartMemory); err != nil {
 			return nil, err
 		}
 	}
@@ -259,4 +260,21 @@ func fromfile(req *http.Request, name string) (*multipart.FileHeader, error) {
 	}
 	f.Close()
 	return fh, err
+}
+
+func Getqueryheader(args ...map[string]string) (map[string]string, map[string]string) {
+	var (
+		query  map[string]string
+		header map[string]string
+	)
+
+	if len(args) > 0 {
+		query = args[0]
+
+	}
+
+	if len(args) == 2 {
+		header = args[1]
+	}
+	return query, header
 }
