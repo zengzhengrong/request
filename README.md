@@ -130,7 +130,7 @@ zurl 主要解决在kubernetes部署接口应用的时候用来做 上游依赖�
 通常 直接就输出 了done，然后就开始运行主容器，主容器 启动后检查到上游服务并不能有效访问，就会退出，导致pod 会进行重启数遍 直到 上游应用有效访问，而zurl就是解决这个问题
 
 
-将上面yaml 替换如下
+将上面yaml 替换如下 即可避免主容器重启
 
 ```
       initContainers:
@@ -172,7 +172,7 @@ Coalesced: (bool) false}
 Math StatusCode Success 200,200
 Success match condition , exit ...
 ```
-即可避免主容器重启
+
 目前只支持get 方法，可以自定义添加头```--add-header```和查询参数```--add-query```
 
 命令行示例
