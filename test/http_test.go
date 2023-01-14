@@ -329,6 +329,7 @@ func TestPATCH(t *testing.T) {
 	resbyte, _ := io.ReadAll(resp.Body)
 
 	fmt.Println(string(resbyte))
+	fmt.Println(resp.Header["Content-Type"])
 	assert.Equal(t, "200 OK", resp.Status)
 
 	resp.Body.Close()
