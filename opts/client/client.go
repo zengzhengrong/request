@@ -147,10 +147,16 @@ func (client *Client) Do(r *request.Request) (*http.Response, error) {
 		req := r.HttpReq.WithContext(httptrace.WithClientTrace(r.HttpReq.Context(), clientTrace))
 		now := time.Now()
 		resp, err := client.HttpClient.Do(req)
+		if err != nil {
+			return resp, err
+		}
 		e := time.Since(now)
 		elapsed := struct{ elapsed time.Duration }{elapsed: e}
 		spew.Dump(elapsed) // print cost time
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return resp, err
+		}
 		resp.Body.Close()                               //  must close
 		resp.Body = io.NopCloser(bytes.NewBuffer(body)) // rewrite resp Body
 		spew.Dump(gjson.ParseBytes(body))               // print response
@@ -210,7 +216,12 @@ func (client *Client) Req(method string, url string, postbody any, args ...map[s
 
 		return response.Response{Resp: resp, Body: body, Err: nil}
 	} else {
-		body = make([]byte, resp.ContentLength)
+		if resp.ContentLength <= 0 {
+			body = make([]byte, 0)
+		} else {
+			body = make([]byte, resp.ContentLength)
+		}
+
 	}
 	_, err = io.ReadFull(resp.Body, body)
 	if err != nil {
