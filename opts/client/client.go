@@ -185,7 +185,7 @@ func (client *Client) Req(method string, url string, postbody any, args ...map[s
 
 	// use ReadFull/Copy Instead of ReadAll reduce memory allocation
 	if client.Opts.RespBodySize != 0 {
-		if client.Opts.RespBodySize < resp.ContentLength {
+		if client.Opts.RespBodySize < resp.ContentLength || resp.ContentLength == -1 {
 			// if body size less than content-length
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
