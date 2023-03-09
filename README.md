@@ -111,3 +111,79 @@ pipline.WithIn 获取请求当作pipline.WithOut的入参
 pipline.WithOut 跟进WithIn 组合请求获取最终结果  
 p.Result() 运行整个流水线获取pipline.WithOut响应  
 
+
+## 命令行工具
+
+zurl 主要解决在kubernetes部署接口应用的时候用来做 上游依赖检查(init container) 目前网上通常做法例如
+
+```
+...
+      initContainers:
+      - name: wait-canal-admin
+        image: zengzhengrong889/box:1.0
+        command: 
+          - sh
+          - -c
+          - until curl -s -o /dev/null canal-admin.canal; do echo waiting for canal-admin; sleep 2; done; echo done
+```
+循环调用curl 直到上游服务canal-admin.canal有返回 才运行主容器，但是往往 canal-admin.canal 这个service name 能访问，却实际 这个服务并没有完全启动起来，
+通常 直接就输出 了done，然后就开始运行主容器，主容器 启动后检查到上游服务并不能有效访问，就会退出，导致pod 会进行重启数遍 直到 上游应用有效访问，而zurl就是解决这个问题
+
+
+将上面yaml 替换如下 即可避免主容器重启
+
+```
+      initContainers:
+      - name: wait-canal-admin
+        image: zengzhengrong889/zurl:latest
+        args:
+          - "--url"
+          - "http://canal-admin.canal/api/v1/login"
+          - "--retry"
+          - "20"
+          - "--debug"
+          - "true"
+```
+--url 指定检查上游服务是否可用的接口  
+--retry  重试次数超过就init container就会失败  
+--debug 开启 debug模式  
+
+debug 模式会打印请求信息以及dns信息
+```
+(*request.ReqOptions)(0xc000202800)({
+Method: (string) (len=3) "GET",
+Url: (string) (len=38) "http://canal-admin.canal/api/v1/login?",
+ContentType: (string) (len=16) "application/json",
+Header: (map[string]string) (len=1) {
+(string) (len=12) "Content-Type": (string) (len=16) "application/json"},
+Body: (io.Reader) <nil>,
+RawBody: (interface {}) <nil>,
+Query: (string) "",
+Context: (context.Context) <nil>})
+(string) (len=20) "canal-admin.canal:80"
+(httptrace.DNSStartInfo) {
+Host: (string) (len=17) "canal-admin.canal"}(httptrace.DNSDoneInfo) {
+Addrs: ([]net.IPAddr) (len=1 cap=1) {(net.IPAddr) 10.101.155.207},
+Err: (error) <nil>,
+Coalesced: (bool) false}
+(struct { Reused bool }) {Reused: (bool) false}
+(struct { elapsed time.Duration }) {elapsed: (time.Duration) 435.931ms}
+(gjson.Result) {"code":50014,"message":"Expired token","data":null}
+Math StatusCode Success 200,200
+Success match condition , exit ...
+```
+
+目前只支持get 方法，可以自定义添加头```--add-header```和查询参数```--add-query```
+
+命令行示例
+```
+# 默认检查状态码是否200
+zurl --url https://httpbin.org/get --retry 2 
+ # 指定检查状态码和设置retry间隔时间，以及header 头的内容
+zurl --url https://httpbin.org/get --retry 2 --expect-statuscode 200 --interval 2 --expect-header Content-Type=application/json
+# 指定检查状态码和设置retry间隔时间，以及json 的内容(value字符串匹配)，json key的路径可以用 xx.xx指定
+zurl --url https://httpbin.org/get --retry 2 --expect-statuscode 200 --interval 2 --expect-json url=https://httpbin.org/get 
+```
+
+
+

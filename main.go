@@ -1,7 +1,10 @@
-package request
+/*
+Copyright © 2023 Zengzhengrong <bhg889@163.com>
+*/
+package main
 
-import "fmt"
+import "github.com/zengzhengrong/request/cmd"
 
 func main() {
-	fmt.Println("hhh")
+	cmd.Execute()
 }
