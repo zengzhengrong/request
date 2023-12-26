@@ -217,7 +217,11 @@ func (client *Client) Req(method string, url string, postbody any, args ...map[s
 		return response.Response{Resp: resp, Body: body, Err: nil}
 	} else {
 		if resp.ContentLength <= 0 {
-			body = make([]byte, 0)
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return response.Response{Resp: resp, Body: nil, Err: err}
+			}
+			return response.Response{Resp: resp, Body: body, Err: nil}
 		} else {
 			body = make([]byte, resp.ContentLength)
 		}
